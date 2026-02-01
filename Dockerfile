@@ -5,6 +5,9 @@ WORKDIR /app
 # Copy the EPG script
 COPY tvj_epg.py .
 
+# Copy static M3U playlist
+COPY tvj.m3u /app/output/tvj.m3u
+
 # Install requests for API fetching
 RUN pip install --no-cache-dir requests
 
@@ -26,4 +29,3 @@ while true; do \
 done & \
 # Start HTTP server to serve XML file on port 8787 \
 cd /app/output && python3 -m http.server 8787'
-
