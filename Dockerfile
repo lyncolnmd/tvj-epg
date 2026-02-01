@@ -1,22 +1,29 @@
-# Use slim Python image
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
-# Copy script
+# Copy the EPG script
 COPY tvj_epg.py .
 
-# Install requests
+# Install requests for API fetching
 RUN pip install --no-cache-dir requests
 
-# Default update interval (hours)
+# Default update interval in hours
 ENV UPDATE_INTERVAL=6
 
-# Run the script in a loop, using UPDATE_INTERVAL env variable
-CMD sh -c 'while true; do \
-      echo "$(date) - Updating TVJ EPG..."; \
-      python tvj_epg.py; \
-      echo "$(date) - Sleeping for ${UPDATE_INTERVAL} hours..."; \
-      sleep $((${UPDATE_INTERVAL}*3600)); \
-    done'
+# Expose the new HTTP server port
+EXPOSE 8787
+
+# Start the EPG update loop in background, then start HTTP server
+CMD sh -c '\
+mkdir -p /app/output; \
+# Run update loop in background \
+while true; do \
+  echo "$(date) - Updating TVJ EPG..."; \
+  python tvj_epg.py; \
+  echo "$(date) - Sleeping for ${UPDATE_INTERVAL} hours..."; \
+  sleep $((${UPDATE_INTERVAL}*3600)); \
+done & \
+# Start HTTP server to serve XML file on port 8787 \
+cd /app/output && python3 -m http.server 8787'
+
