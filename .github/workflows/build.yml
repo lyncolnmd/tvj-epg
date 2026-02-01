@@ -17,6 +17,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(cat VERSION | tr -d ' \n')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Install Podman
         run: |
           sudo apt-get update
@@ -28,13 +34,25 @@ jobs:
             -u ${{ github.actor }} \
             --password-stdin
 
-      - name: Build image with Podman
+      - name: Build image with Podman (multi-tag)
         run: |
+          IMAGE=ghcr.io/${{ github.repository }}
+          VERSION=${{ steps.version.outputs.version }}
+          SHORT_SHA=${GITHUB_SHA::7}
+
           podman build \
             -f Containerfile \
-            -t ghcr.io/${{ github.repository }}:latest \
+            -t $IMAGE:latest \
+            -t $IMAGE:v$VERSION \
+            -t $IMAGE:sha-$SHORT_SHA \
             .
 
-      - name: Push image to GHCR
+      - name: Push all tags
         run: |
-          podman push ghcr.io/${{ github.repository }}:latest
+          IMAGE=ghcr.io/${{ github.repository }}
+          VERSION=${{ steps.version.outputs.version }}
+          SHORT_SHA=${GITHUB_SHA::7}
+
+          podman push $IMAGE:latest
+          podman push $IMAGE:v$VERSION
+          podman push $IMAGE:sha-$SHORT_SHA
