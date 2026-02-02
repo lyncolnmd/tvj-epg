@@ -26,7 +26,7 @@ jobs:
 
           if [ -n "${GITEA_TOKEN:-}" ]; then
             CLONE_URL="${BASE}/${REPO}.git"
-            #CLONE_URL="$(echo "$CLONE_URL" | sed -E 's#^https://#https://oauth2:'"${GITEA_TOKEN}"'@#')"
+            CLONE_URL="$(echo "$CLONE_URL" | sed -E 's#^https://#https://oauth2:'"${GITEA_TOKEN}"'@#')"
             git clone "$CLONE_URL" .
           else
             git clone "${BASE}/${REPO}.git" .
