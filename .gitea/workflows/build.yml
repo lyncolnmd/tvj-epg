@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # IMPORTANT: Gitea checkout (no Node required)
       - name: Checkout repository
         uses: gitea/checkout@v4
 
@@ -24,9 +25,9 @@ jobs:
           VERSION="$(cat VERSION | tr -d ' \n')"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Registry login
+      - name: Log in to container registry
         env:
-          REGISTRY: ${{ vars.REGISTRY }}
+          REGISTRY: ${{ vars.REGISTRY }}           # e.g. loxthelion.com OR ghcr.io
           REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
           REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
         run: |
@@ -37,7 +38,7 @@ jobs:
       - name: Build image (multi-tag)
         env:
           REGISTRY: ${{ vars.REGISTRY }}
-          IMAGE: ${{ vars.IMAGE }}
+          IMAGE: ${{ vars.IMAGE }}                 # e.g. lyncolnmd/tvj-epg OR tvj-epg
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
