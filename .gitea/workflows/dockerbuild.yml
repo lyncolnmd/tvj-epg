@@ -15,7 +15,7 @@ jobs:
       # -------------------------------------------------
       - name: Checkout repository
         env:
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}   # optional if repo is private
+          GITEA_TOKEN: ${{ secrets.TEA_TOKEN }}   # optional if repo is private
         run: |
           set -euo pipefail
 
