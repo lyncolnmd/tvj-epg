@@ -1,0 +1,92 @@
+name: Build and Publish TVJ EPG Image
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # -------------------------------------------------
+      # Checkout (manual, no Node, no external actions)
+      # -------------------------------------------------
+      - name: Checkout repository
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}   # optional if repo is private
+        run: |
+          set -euo pipefail
+
+          rm -rf ./* ./.git || true
+
+          BASE="${GITHUB_SERVER_URL%/}"
+          REPO="${GITHUB_REPOSITORY}"
+
+          if [ -n "${GITEA_TOKEN:-}" ]; then
+            CLONE_URL="${BASE}/${REPO}.git"
+            CLONE_URL="$(echo "$CLONE_URL" | sed -E 's#^https://#https://oauth2:'"${GITEA_TOKEN}"'@#')"
+            git clone "$CLONE_URL" .
+          else
+            git clone "${BASE}/${REPO}.git" .
+          fi
+
+          git config --global --add safe.directory "$PWD"
+
+      # -------------------------------------------------
+      # Read version
+      # -------------------------------------------------
+      - name: Read version
+        id: version
+        run: |
+          VERSION="$(cat VERSION | tr -d ' \n')"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      # -------------------------------------------------
+      # Login to container registry (Docker)
+      # -------------------------------------------------
+      - name: Docker login
+        env:
+          REGISTRY: ${{ vars.REGISTRY }}           # e.g. loxthelion.com:5050 or ghcr.io
+          REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          echo "$REGISTRY_TOKEN" | docker login "$REGISTRY" \
+            -u "$REGISTRY_USER" \
+            --password-stdin
+
+      # -------------------------------------------------
+      # Build image with Docker (multi-tag)
+      # -------------------------------------------------
+      - name: Build image (Docker, multi-tag)
+        env:
+          REGISTRY: ${{ vars.REGISTRY }}
+          IMAGE: ${{ vars.IMAGE }}                 # e.g. lyncolnmd/tvj-epg
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          FULL_IMAGE="$REGISTRY/$IMAGE"
+
+          docker build \
+            -f Containerfile \
+            -t "$FULL_IMAGE:latest" \
+            -t "$FULL_IMAGE:v$VERSION" \
+            -t "$FULL_IMAGE:sha-$SHORT_SHA" \
+            .
+
+      # -------------------------------------------------
+      # Push all tags
+      # -------------------------------------------------
+      - name: Push all tags
+        env:
+          REGISTRY: ${{ vars.REGISTRY }}
+          IMAGE: ${{ vars.IMAGE }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          FULL_IMAGE="$REGISTRY/$IMAGE"
+
+          docker push "$FULL_IMAGE:latest"
+          docker push "$FULL_IMAGE:v$VERSION"
+          docker push "$FULL_IMAGE:sha-$SHORT_SHA"
