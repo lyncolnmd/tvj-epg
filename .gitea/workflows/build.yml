@@ -38,12 +38,6 @@ jobs:
           # Mark as safe directory for CI environments
           git config --global --add safe.directory "$PWD"
 
-      - name: Install Podman
-        run: |
-          apt update
-          apt install -y podman
-          podman --version
-
       - name: Read version
         id: version
         run: |
@@ -69,7 +63,7 @@ jobs:
           SHORT_SHA="${GITHUB_SHA::7}"
           FULL_IMAGE="$REGISTRY/$IMAGE"
 
-          podman build \
+          docker build \
             -f Containerfile \
             -t "$FULL_IMAGE:latest" \
             -t "$FULL_IMAGE:v$VERSION" \
