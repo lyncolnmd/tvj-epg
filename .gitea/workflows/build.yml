@@ -57,7 +57,7 @@ jobs:
       - name: Build image (multi-tag)
         env:
           REGISTRY: ${{ vars.REGISTRY }}
-          IMAGE: ${{ vars.IMAGE }}                 # e.g. lyncolnmd/tvj-epg
+          IMAGE: ${{ vars.IMAGE }}                 # e.g. david/tvj-epg
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
@@ -79,6 +79,6 @@ jobs:
           SHORT_SHA="${GITHUB_SHA::7}"
           FULL_IMAGE="$REGISTRY/$IMAGE"
 
-          podman push "$FULL_IMAGE:latest"
-          podman push "$FULL_IMAGE:v$VERSION"
-          podman push "$FULL_IMAGE:sha-$SHORT_SHA"
+          docker push "$FULL_IMAGE:latest"
+          docker push "$FULL_IMAGE:v$VERSION"
+          docker push "$FULL_IMAGE:sha-$SHORT_SHA"
