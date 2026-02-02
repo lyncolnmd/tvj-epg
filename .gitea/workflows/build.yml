@@ -13,7 +13,7 @@ jobs:
       - name: Checkout (manual, from loxthelion.com/gitea)
         env:
           # If your repo is private, set GITEA_TOKEN as a repo secret (see below).
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_TOKEN: ${{ secrets.TEA_TOKEN }}
         run: |
           set -euo pipefail
 
