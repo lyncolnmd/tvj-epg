@@ -50,7 +50,7 @@ jobs:
           REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
           REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
         run: |
-          echo "$REGISTRY_TOKEN" | podman login "$REGISTRY" \
+          echo "$REGISTRY_TOKEN" | docker login "$REGISTRY" \
             -u "$REGISTRY_USER" \
             --password-stdin
 
