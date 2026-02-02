@@ -52,9 +52,9 @@ jobs:
           REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
           REGISTRY_TOKEN: ${{ secrets.TEA_TOKEN }}
         run: |
-          echo "$REGISTRY_TOKEN" | docker login "$REGISTRY" \
+          echo "$REGISTRY_TOKEN" | docker login --tls-verify=false "$REGISTRY" \
             -u "$REGISTRY_USER" \
-            --password-stdin
+            --password-stdin 
 
       # -------------------------------------------------
       # Build image with Docker (multi-tag)
