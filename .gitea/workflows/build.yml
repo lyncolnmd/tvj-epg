@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: gitea/checkout@v4
 
       - name: Install Podman
@@ -24,12 +24,9 @@ jobs:
           VERSION="$(cat VERSION | tr -d ' \n')"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      # ----------------------------
-      # Login to your registry
-      # ----------------------------
       - name: Registry login
         env:
-          REGISTRY: ${{ vars.REGISTRY }}          # e.g. registry.example.com OR ghcr.io
+          REGISTRY: ${{ vars.REGISTRY }}
           REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
           REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
         run: |
@@ -37,13 +34,10 @@ jobs:
             -u "$REGISTRY_USER" \
             --password-stdin
 
-      # ----------------------------
-      # Build & tag
-      # ----------------------------
       - name: Build image (multi-tag)
         env:
-          REGISTRY: ${{ vars.REGISTRY }}          # e.g. registry.example.com OR ghcr.io
-          IMAGE: ${{ vars.IMAGE }}                # e.g. lyncolnmd/tvj-epg (no registry prefix)
+          REGISTRY: ${{ vars.REGISTRY }}
+          IMAGE: ${{ vars.IMAGE }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
@@ -56,9 +50,6 @@ jobs:
             -t "$FULL_IMAGE:sha-$SHORT_SHA" \
             .
 
-      # ----------------------------
-      # Push
-      # ----------------------------
       - name: Push all tags
         env:
           REGISTRY: ${{ vars.REGISTRY }}
