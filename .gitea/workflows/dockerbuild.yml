@@ -50,7 +50,7 @@ jobs:
         env:
           REGISTRY: ${{ vars.REGISTRY }}           # e.g. loxthelion.com:5050 or ghcr.io
           REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
-          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+          REGISTRY_TOKEN: ${{ secrets.TEA_TOKEN }}
         run: |
           echo "$REGISTRY_TOKEN" | docker login "$REGISTRY" \
             -u "$REGISTRY_USER" \
