@@ -48,7 +48,7 @@ jobs:
       # -------------------------------------------------
       - name: Docker login
         env:
-          REGISTRY: loxthelion.com/gitea           # e.g. loxthelion.com:5050 or ghcr.io
+          REGISTRY: ${{ vars.REGISTRY_USER }}          # e.g. loxthelion.com:5050 or ghcr.io
           REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
           REGISTRY_TOKEN: ${{ secrets.TEA_TOKEN }}
         run: |
