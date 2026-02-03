@@ -2,63 +2,57 @@ name: Build and Publish TVJ EPG Image
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout repository
-        uses: gitea/checkout@v4
+        uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(cat VERSION | tr -d ' \n')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Install Podman
         run: |
           sudo apt-get update
           sudo apt-get install -y podman
 
-      - name: Read version
-        id: version
+      - name: Log in to GitHub Container Registry
         run: |
-          VERSION="$(cat VERSION | tr -d ' \n')"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Registry login
-        env:
-          REGISTRY: ${{ vars.REGISTRY }}
-          REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
-          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
-        run: |
-          echo "$REGISTRY_TOKEN" | podman login "$REGISTRY" \
-            -u "$REGISTRY_USER" \
+          echo "${{ secrets.GHCR_TOKEN }}" | podman login ghcr.io \
+            -u ${{ github.actor }} \
             --password-stdin
 
-      - name: Build image (multi-tag)
-        env:
-          REGISTRY: ${{ vars.REGISTRY }}
-          IMAGE: ${{ vars.IMAGE }}
-          VERSION: ${{ steps.version.outputs.version }}
+      - name: Build image with Podman (multi-tag)
         run: |
-          SHORT_SHA="${GITHUB_SHA::7}"
-          FULL_IMAGE="$REGISTRY/$IMAGE"
+          IMAGE=ghcr.io/${{ github.repository }}
+          VERSION=${{ steps.version.outputs.version }}
+          SHORT_SHA=${GITHUB_SHA::7}
 
           podman build \
             -f Containerfile \
-            -t "$FULL_IMAGE:latest" \
-            -t "$FULL_IMAGE:v$VERSION" \
-            -t "$FULL_IMAGE:sha-$SHORT_SHA" \
+            -t $IMAGE:latest \
+            -t $IMAGE:v$VERSION \
+            -t $IMAGE:sha-$SHORT_SHA \
             .
 
       - name: Push all tags
-        env:
-          REGISTRY: ${{ vars.REGISTRY }}
-          IMAGE: ${{ vars.IMAGE }}
-          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          SHORT_SHA="${GITHUB_SHA::7}"
-          FULL_IMAGE="$REGISTRY/$IMAGE"
+          IMAGE=ghcr.io/${{ github.repository }}
+          VERSION=${{ steps.version.outputs.version }}
+          SHORT_SHA=${GITHUB_SHA::7}
 
-          podman push "$FULL_IMAGE:latest"
-          podman push "$FULL_IMAGE:v$VERSION"
-          podman push "$FULL_IMAGE:sha-$SHORT_SHA"
+          podman push $IMAGE:latest
+          podman push $IMAGE:v$VERSION
+          podman push $IMAGE:sha-$SHORT_SHA
