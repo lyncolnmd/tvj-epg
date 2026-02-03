@@ -61,12 +61,12 @@ jobs:
       # -------------------------------------------------
       - name: Build image (Docker, multi-tag)
         env:
-          REGISTRY: ${{ vars.REGISTRY }}
-          IMAGE: ${{ vars.IMAGE }}                 # e.g. lyncolnmd/tvj-epg
+          REGISTRY: ${{ vars.REGISTRY }}/gitea
+          IMAGE: david/tvj-epg                 # e.g. lyncolnmd/tvj-epg
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
-          FULL_IMAGE="$REGISTRY/gitea/$IMAGE"
+          FULL_IMAGE="$REGISTRY/$IMAGE"
 
           docker build \
             -f Containerfile \
