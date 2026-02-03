@@ -66,7 +66,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
-          FULL_IMAGE="$REGISTRY/$IMAGE"
+          FULL_IMAGE="$REGISTRY/gitea/$IMAGE"
 
           docker build \
             -f Containerfile \
