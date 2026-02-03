@@ -18,7 +18,7 @@ ENV UPDATE_INTERVAL=6
 EXPOSE 8787
 
 # Start the EPG update loop in background, then start HTTP server
-CMD ["python", "tvj_epg.py"]\
+CMD ["python", "tvj_epg.py"]
 mkdir -p /app/output; \
 # Run update loop in background \
 while true; do \
