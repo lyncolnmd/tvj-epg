@@ -61,7 +61,7 @@ jobs:
       # -------------------------------------------------
       - name: Build image (Docker, multi-tag)
         env:
-          REGISTRY: ${{ vars.REGISTRY }}/${{ vars.BASE_URL }}
+          REGISTRY: ${{ vars.REGISTRY }}/v2
           IMAGE: david/tvj-epg                 # e.g. lyncolnmd/tvj-epg
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -80,7 +80,7 @@ jobs:
       # -------------------------------------------------
       - name: Push all tags
         env:
-          REGISTRY: ${{ vars.REGISTRY }}/${{ vars.BASE_URL }}
+          REGISTRY: ${{ vars.REGISTRY }}/v2
           IMAGE: david/tvj-epg
           VERSION: ${{ steps.version.outputs.version }}
         run: |
