@@ -62,7 +62,7 @@ jobs:
       - name: Build image (Docker, multi-tag)
         env:
           REGISTRY: ${{ vars.REGISTRY }}/${{ vars.BASE_URL }}
-          IMAGE: ${{ vars.REGISTRY_USER }}/tvj-epg                 # e.g. lyncolnmd/tvj-epg
+          IMAGE: david/tvj-epg                 # e.g. lyncolnmd/tvj-epg
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
@@ -81,7 +81,7 @@ jobs:
       - name: Push all tags
         env:
           REGISTRY: ${{ vars.REGISTRY }}/${{ vars.BASE_URL }}
-          IMAGE: ${{ vars.REGISTRY_USER }}/tvj-epg
+          IMAGE: david/tvj-epg
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
