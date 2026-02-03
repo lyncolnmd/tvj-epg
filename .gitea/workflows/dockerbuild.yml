@@ -73,6 +73,7 @@ jobs:
             -t "$FULL_IMAGE:latest" \
             -t "$FULL_IMAGE:v$VERSION" \
             -t "$FULL_IMAGE:sha-$SHORT_SHA" \
+            --push \
             .
 
       # -------------------------------------------------
