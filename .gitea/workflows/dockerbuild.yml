@@ -66,7 +66,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
-          FULL_IMAGE="$REGISTRY/$IMAGE"
+          FULL_IMAGE="$REGISTRY/david/tvj-epg"
 
           docker build \
             -f Containerfile \
@@ -84,9 +84,9 @@ jobs:
           IMAGE: david/tvj-epg
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          #SHORT_SHA="${GITHUB_SHA::7}"
-          FULL_IMAGE="$REGISTRY/$IMAGE"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          FULL_IMAGE="$REGISTRY/david/tvj-epg"
 
           docker push "$FULL_IMAGE:latest"
           docker push "$FULL_IMAGE:v$VERSION"
-          #docker push "$FULL_IMAGE:sha-$SHORT_SHA"
+          docker push "$FULL_IMAGE:sha-$SHORT_SHA"
