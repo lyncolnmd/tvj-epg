@@ -73,21 +73,18 @@ jobs:
             -t "$FULL_IMAGE:latest" \
             -t "$FULL_IMAGE:v$VERSION" \
             -t "$FULL_IMAGE:sha-$SHORT_SHA" \
-            --push \
+            --load \
             .
 
-      # -------------------------------------------------
-      # Push all tags
-      # -------------------------------------------------
-     # - name: Push all tags
-     #   env:
-     #     REGISTRY: ${{ vars.REGISTRY }}
-     #     IMAGE: david/tvj-epg
-     #     VERSION: ${{ steps.version.outputs.version }}
-     #   run: |
-     #     SHORT_SHA="${GITHUB_SHA::7}"
-     #     FULL_IMAGE="$REGISTRY/david/tvj-epg"
-
-     #     docker push "$FULL_IMAGE:latest"
-     #     docker push "$FULL_IMAGE:v$VERSION"
-     #     docker push "$FULL_IMAGE:sha-$SHORT_SHA"
+      - name: Verify healthcheck and publish
+        env:
+          REGISTRY: ${{ vars.REGISTRY }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA::7}"
+          FULL_IMAGE="$REGISTRY/david/tvj-epg"
+          docker image inspect "$FULL_IMAGE:latest" | python3 scripts/verify_image_healthcheck.py
+          docker push "$FULL_IMAGE:latest"
+          docker push "$FULL_IMAGE:v$VERSION"
+          docker push "$FULL_IMAGE:sha-$SHORT_SHA"

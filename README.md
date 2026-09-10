@@ -9,7 +9,7 @@ provider plugin; the engine fetches their common feed once per update.
 Build this checkout and select both channels:
 
 ```sh
-podman build -t tvj-epg .
+podman build --format docker -t tvj-epg .
 podman run -d --name tvj-epg -p 1876:1876 \
   -e TZ=America/Jamaica \
   -e CHANNELS=tvj,tvjsn \
@@ -125,3 +125,15 @@ not configure automatic restart behavior.
 curl http://localhost:1876/health
 podman inspect --format '{{.State.Health.Status}}' tvj-epg
 ```
+
+### Automatic healthcheck inheritance
+
+No health environment variable or Quadlet `HealthCmd` is required. New containers
+inherit the image healthcheck unless deployment settings explicitly disable it.
+Build with `podman build --format docker` to preserve healthcheck metadata; OCI
+builds can omit it. The Gitea publishing workflow verifies the image healthcheck before pushing
+tags. It loads and verifies the image before publishing.
+
+After an image update, pull the new image and recreate the container through its
+Quadlet service to acquire the metadata. An existing container does not acquire
+new image settings simply because a tag was updated in the registry.
