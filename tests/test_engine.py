@@ -29,7 +29,7 @@ class EngineTests(unittest.TestCase):
                 load({'CHANNELS': selection})
 
     def test_outputs_and_shared_fetch(self):
-        for selection in ('tvj', 'tvjsn', 'tvj,tvjsn'):
+        for selection in ('tvj', 'tvjsn', 'jnn', 'tvj,tvjsn', 'tvj,tvjsn,jnn'):
             with self.subTest(selection=selection), tempfile.TemporaryDirectory() as directory:
                 output = Path(directory) / 'tvj.xml'
                 with patch.object(univtec, 'fetch', return_value=feed()) as fetch:

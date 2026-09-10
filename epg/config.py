@@ -17,6 +17,13 @@ BUILTINS = {
         icon="https://rjr.vod.immergo.tv/rjr/uploaded/85c62d19-8e57-49b5-820a-acca5adcc1c9.png",
         group="Sports",
     ),
+    "jnn": Channel(
+        id="JNN.jm@SD", name="Jamaica News Network",
+        channel_id="66e0a79714ec780025bae4fd",
+        stream_url="https://rjrjnn-ioriver-cdn.encoders.immergo.tv/2/streamPlaylist.m3u8",
+        icon="https://rjr.vod.immergo.tv/rjr/uploaded/3c3487a8-5e77-4c3a-abb0-8a5eca477e86.png",
+        group="News",
+    ),
 }
 
 

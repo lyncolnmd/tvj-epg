@@ -21,5 +21,4 @@ python -c 'from epg.config import load; load()'
   done
 ) &
 
-cd /app/output
-exec python3 -m http.server "$PORT"
+exec python3 -m epg.server

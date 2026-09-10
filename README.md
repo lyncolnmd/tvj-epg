@@ -1,7 +1,7 @@
 # TVJ IPTV + XMLTV Container
 
 A configurable EPG engine that fetches channel schedules and serves a combined
-XMLTV guide and M3U playlist over HTTP. TVJ and TVJ Sports Network share a Univtec
+XMLTV guide and M3U playlist over HTTP. TVJ, TVJ Sports Network, and Jamaica News Network share a Univtec
 provider plugin; the engine fetches their common feed once per update.
 
 ## Run
@@ -19,6 +19,9 @@ podman run -d --name tvj-epg -p 1876:1876 \
 
 With no `CHANNELS` setting, only TVJ is included, preserving the default behavior.
 Use `CHANNELS=tvjsn` for TVJ Sports Network alone.
+Use `CHANNELS=tvj,tvjsn,jnn` to include Jamaica News Network as well, or
+`CHANNELS=jnn` for JNN alone. JNN uses the same Univtec EPG feed and the supplied
+stream URL `https://rjrjnn-ioriver-cdn.encoders.immergo.tv/2/streamPlaylist.m3u8`.
 
 - Playlist: `http://localhost:1876/tvj.m3u`
 - Guide: `http://localhost:1876/tvj.xml`
@@ -49,6 +52,7 @@ through its HTTP server.
 | --- | --- | --- |
 | `tvj` | Television Jamaica | `TVJ.jm@SD` |
 | `tvjsn` | TVJ Sports Network | `TVJSN.jm@SD` |
+| `jnn` | Jamaica News Network | `JNN.jm@SD` |
 
 TVJ Sports Network uses the supplied video URL:
 `https://vod2live.univtec.com/manifest/65cf631b-d422-49e0-ab25-07d5aa08ca8f/7660000.m3u8`.
@@ -74,8 +78,8 @@ A failed fetch or invalid schedule leaves previous files intact, and the contain
 retries at the next interval. Each file is replaced atomically; the two files are
 not a single transaction. Old data can expire during prolonged outages.
 
-Custom feed/channel environment settings, per-channel cached fallback, and health
-reporting are planned for subsequent milestones; they are not implemented yet.
+Custom providers are out of scope for now. Per-channel cached fallback is not
+implemented; a failed channel update preserves the previous combined outputs.
 The root `tvj.m3u` is a legacy static example; container playlists are now generated.
 
 ## Local verification
@@ -85,4 +89,39 @@ With Python 3.11+ and `requests` installed:
 ```sh
 python3 -m unittest discover -s tests -v
 CHANNELS=tvj,tvjsn OUTPUT_FILE=output/tvj.xml python3 -m epg.engine
+```
+
+## Health reporting
+
+`http://localhost:1876/health` returns JSON describing the latest scheduled
+provider fetch, per-channel parsing results, current guide coverage, programme
+counts, guide expiry, and XMLTV/M3U output validity. It uses the configured `PORT`.
+
+| Status | HTTP code | Meaning |
+| --- | --- | --- |
+| `healthy` | 200 | Latest update succeeded, every selected channel covers now and has data extending into the future, and both outputs are usable |
+| `degraded` | 200 | Outputs remain usable, but the latest update failed, no update record is available, or an update is overdue |
+| `unhealthy` | 503 | At least one selected channel lacks current/future guide data, or a required output is missing or invalid |
+
+An update is overdue after `UPDATE_INTERVAL` hours plus a five-minute grace period.
+Startup without usable output reports unhealthy. Guide freshness is recalculated
+on every health request, including during upstream outages. A current programme
+whose end is in the future satisfies the future-data check; no minimum forecast
+window is required. Schedule gaps report unhealthy while they are occurring.
+
+The latest update result is stored atomically in `tvj.health.json` beside the
+XMLTV output (the filename follows `OUTPUT_FILE`). This file is a stored update
+record; `/health` computes live freshness and output checks. Provider status means
+the last request and top-level response parsing succeeded; per-channel parsing
+results are reported separately. Errors are identified by exception type.
+
+The container checks `/health` every 30 seconds with a 60-second startup grace
+period and three retries. Degraded status passes the container probe because the
+existing outputs are still usable. These checks make no additional requests to
+Univtec and do not check video-stream playback. Container health status alone does
+not configure automatic restart behavior.
+
+```sh
+curl http://localhost:1876/health
+podman inspect --format '{{.State.Health.Status}}' tvj-epg
 ```
