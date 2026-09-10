@@ -131,8 +131,10 @@ podman inspect --format '{{.State.Health.Status}}' tvj-epg
 No health environment variable or Quadlet `HealthCmd` is required. New containers
 inherit the image healthcheck unless deployment settings explicitly disable it.
 Build with `podman build --format docker` to preserve healthcheck metadata; OCI
-builds can omit it. The Gitea publishing workflow verifies the image healthcheck before pushing
-tags. It loads and verifies the image before publishing.
+builds can omit it. The Gitea publishing workflow verifies the healthcheck in the Docker archive
+exported by BuildKit, then loads it through the Podman socket and verifies a
+second archive exported from the loaded image before pushing tags. This checks
+the actual image configuration rather than the compatibility API inspect view.
 
 After an image update, pull the new image and recreate the container through its
 Quadlet service to acquire the metadata. An existing container does not acquire
