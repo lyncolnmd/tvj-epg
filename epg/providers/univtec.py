@@ -1,51 +1,10 @@
-#!/usr/bin/env python3
-
-import os
-import re
+"""Univtec feed adapter and metadata normalization."""
 import html
-import requests
-import xml.etree.ElementTree as ET
+import re
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
-
-# ---------------- CONFIG ----------------
-
-EPG_URL = "https://insight-api-shared.univtec.com/interface/epg"
-
-# Stable TVJ object ID returned by the new Univtec API
-CHANNEL_ID = "66e312890478fd00235244cb"
-
-TVG_ID = "TVJ.jm@SD"
-CHANNEL_NAME = "Television Jamaica"
-CHANNEL_ICON = "https://www.televisionjamaica.com/Portals/0/tvj_logo.png"
-
-# Podman/container output path
-OUTPUT_FILE = os.environ.get(
-    "OUTPUT_FILE",
-    "/app/output/tvj.xml",
-)
-
-REQUEST_HEADERS = {
-    "accept": "application/json",
-    "platform": "web",
-    "x-tenant-id": "rjr",
-}
-
-# ----------------------------------------
-
-# Resolve timezone for LOGGING ONLY
-TZ_NAME = os.environ.get("TZ", "UTC")
-try:
-    LOG_TZ = ZoneInfo(TZ_NAME)
-except Exception:
-    print(f"Invalid TZ '{TZ_NAME}', falling back to UTC")
-    LOG_TZ = timezone.utc
-
-
-def fmt_log_time(dt_utc: datetime) -> str:
-    """Format a UTC datetime into the configured log timezone."""
-    return dt_utc.astimezone(LOG_TZ).strftime("%Y-%m-%d %H:%M:%S %Z")
-
+import xml.etree.ElementTree as ET
+import requests
+from epg.models import Programme
 
 def parse_iso8601(value: str) -> datetime:
     """Parse an ISO-8601 timestamp returned by Univtec."""
@@ -203,7 +162,7 @@ def add_date(programme_el, item: dict):
 
         ET.SubElement(programme_el, "date").text = str(dt.year)
 
-    except (ValueError, TypeError, OSError):
+    except (ValueError, TypeError, OSError, OverflowError):
         pass
 
 
@@ -267,190 +226,50 @@ def add_icon(programme_el, item: dict):
         )
 
 
-def fetch_tvj_events():
-    """
-    Fetch the complete RJR EPG response and extract the TVJ object.
-    """
-    resp = requests.get(
-        EPG_URL,
-        headers=REQUEST_HEADERS,
-        timeout=30,
-    )
-    resp.raise_for_status()
 
-    data = resp.json()
-
+def fetch(url, tenant):
+    response = requests.get(url, headers={
+        "accept": "application/json", "platform": "web", "x-tenant-id": tenant,
+    }, timeout=30)
+    response.raise_for_status()
+    data = response.json()
     if not isinstance(data, list) or not data:
-        raise RuntimeError(
-            "EPG response is empty or invalid "
-            "(expected a non-empty list)."
-        )
+        raise ValueError("Expected a non-empty Univtec channel list")
+    return data
 
-    channel = next(
-        (
-            item
-            for item in data
-            if item.get("id") == CHANNEL_ID
-        ),
-        None,
-    )
 
+def programmes(data, channel_id):
+    channel = next((c for c in data if isinstance(c, dict) and c.get("id") == channel_id), None)
     if channel is None:
-        raise RuntimeError(
-            f"TVJ channel ID {CHANNEL_ID} "
-            "was not found in EPG response."
-        )
-
-    epg_object = channel.get("epgObject")
-
-    if not isinstance(epg_object, dict):
-        raise RuntimeError(
-            "TVJ EPG response has no valid epgObject."
-        )
-
-    events = epg_object.get("events")
-
+        raise ValueError(f"Channel {channel_id} missing from feed")
+    epg = channel.get("epgObject")
+    events = epg.get("events") if isinstance(epg, dict) else None
     if not isinstance(events, list):
-        raise RuntimeError(
-            "TVJ epgObject.events is missing or invalid."
-        )
-
-    return events
-
-
-def main():
-    run_time_utc = datetime.now(timezone.utc)
-
-    print(
-        f"[{fmt_log_time(run_time_utc)}] "
-        f"Script run started (TZ={TZ_NAME})"
-    )
-
-    events = fetch_tvj_events()
-
-    # Discard malformed entries and provider filler.
-    valid_events = []
-
+        raise ValueError(f"Channel {channel_id} has no valid events list")
+    result = []
     for item in events:
         if not isinstance(item, dict):
             continue
-
-        if not item.get("start") or not item.get("end"):
-            continue
-
         title = clean_text(item.get("title"))
-
         if title and title.casefold() == "no program":
             continue
-
         try:
-            start_dt = parse_iso8601(item["start"])
-            end_dt = parse_iso8601(item["end"])
-        except (ValueError, TypeError):
+            start = parse_iso8601(item.get("start"))
+            stop = parse_iso8601(item.get("end"))
+        except (ValueError, TypeError, AttributeError):
             continue
-
-        if end_dt <= start_dt:
+        if stop <= start:
             continue
-
-        valid_events.append((item, start_dt, end_dt))
-
-    if not valid_events:
-        raise RuntimeError(
-            "No valid TVJ programmes were returned."
-        )
-
-    # Sort defensively in case provider changes ordering.
-    valid_events.sort(key=lambda x: x[1])
-
-    last_update_utc = max(
-        end_dt
-        for _, _, end_dt in valid_events
-    )
-
-    tv = ET.Element(
-        "tv",
-        attrib={
-            "generator-info-name":
-                "Univtec / 1SpotMedia TVJ EPG (enriched)"
-        },
-    )
-
-    # Channel block
-    ch = ET.SubElement(tv, "channel", id=TVG_ID)
-
-    ET.SubElement(
-        ch,
-        "display-name",
-    ).text = CHANNEL_NAME
-
-    ET.SubElement(
-        ch,
-        "icon",
-        src=CHANNEL_ICON,
-    )
-
-    # Programmes
-    for item, start_dt, end_dt in valid_events:
-
-        programme = ET.SubElement(
-            tv,
-            "programme",
-            start=datetime_to_xmltv(start_dt),
-            stop=datetime_to_xmltv(end_dt),
-            channel=TVG_ID,
-        )
-
-        title = (
-            clean_text(item.get("title"))
-            or clean_text(get_custom(item).get("seriesTitle"))
-            or "Unknown Program"
-        )
-
-        ET.SubElement(
-            programme,
-            "title",
-            lang="en",
-        ).text = title
-
-        ET.SubElement(
-            programme,
-            "desc",
-            lang="en",
-        ).text = get_description(item)
-
-        add_categories(programme, item)
-        add_episode_numbers(programme, item)
-        add_date(programme, item)
-        add_length(programme, item)
-        add_rating(programme, item)
-        add_icon(programme, item)
-
-    # Ensure output directory exists.
-    output_dir = os.path.dirname(OUTPUT_FILE)
-
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-
-    # Write XMLTV file.
-    ET.ElementTree(tv).write(
-        OUTPUT_FILE,
-        encoding="utf-8",
-        xml_declaration=True,
-    )
-
-    done_utc = datetime.now(timezone.utc)
-
-    print(
-        f"[{fmt_log_time(done_utc)}] "
-        f"XMLTV written: {OUTPUT_FILE}"
-    )
-
-    print(
-        f"Summary: Programmes={len(valid_events)}, "
-        f"Last run={fmt_log_time(run_time_utc)}, "
-        f"EPG updated until={fmt_log_time(last_update_utc)}"
-    )
-
-
-if __name__ == "__main__":
-    main()
+        # Normalize existing enriched metadata into provider-independent XMLTV fields.
+        metadata = ET.Element("metadata")
+        for enrich in (add_categories, add_episode_numbers, add_date,
+                       add_length, add_rating, add_icon):
+            enrich(metadata, item)
+        result.append(Programme(
+            start, stop,
+            title or clean_text(get_custom(item).get("seriesTitle")) or "Unknown Program",
+            get_description(item), tuple(metadata),
+        ))
+    if not result:
+        raise ValueError(f"Channel {channel_id} has no valid programmes")
+    return sorted(result, key=lambda p: p.start)

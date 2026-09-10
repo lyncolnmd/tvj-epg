@@ -1,99 +1,83 @@
 # TVJ IPTV + XMLTV Container
 
-This project provides a **self-contained IPTV helper container** that:
+A configurable EPG engine that fetches channel schedules and serves a combined
+XMLTV guide and M3U playlist over HTTP. TVJ and TVJ Sports Network share a Univtec
+provider plugin; the engine fetches their common feed once per update.
 
-* Serves a **TVJ M3U playlist** (stream data)
-* Automatically fetches and updates **XMLTV EPG data** for Television Jamaica (TVJ)
-* Hosts both files over HTTP for easy consumption by IPTV clients
+## Run
 
-The container is designed to run unattended and continuously refresh the EPG on a schedule.
+Build this checkout and select both channels:
 
----
-
-## What this container provides
-
-When deployed, the container exposes the following URLs:
-
-* **Playlist (M3U):**  
-  `http://localhost:8787/tvj.m3u`
-
-* **EPG (XMLTV):**  
-  `http://localhost:8787/tvj.xml`
-
-These can be used directly in:
-
-* Plex
-* Jellyfin
-* Kodi
-* Tivimate
-* TVHeadend
-* Any XMLTV / M3U compatible IPTV client
-
-The playlist and EPG are matched using:
-
-```
-tvg-id="TVJ.jm@SD"
-```
----
-
-### Run the container
-
-```bash
-podman run -d \
-  --name tvj-epg \
-  -p 8787:8787 \
+```sh
+podman build -t tvj-epg .
+podman run -d --name tvj-epg -p 8787:8787 \
   -e TZ=America/Jamaica \
+  -e CHANNELS=tvj,tvjsn \
   -e UPDATE_INTERVAL=3 \
-    ghcr.io/lyncolnmd/tvj-epg:latest
+  tvj-epg
 ```
 
-#### Environment variables
+With no `CHANNELS` setting, only TVJ is included, preserving the default behavior.
+Use `CHANNELS=tvjsn` for TVJ Sports Network alone.
 
-| Variable          | Description                                            |
-| ----------------- | ------------------------------------------------------ |
-| `TZ`              | Timezone used **for logging only** (XMLTV remains UTC) |
-| `UPDATE_INTERVAL` | How often the EPG is refreshed (hours)                 |
+- Playlist: `http://localhost:8787/tvj.m3u`
+- Guide: `http://localhost:8787/tvj.xml`
 
----
+Both files contain the selected channels. Their XMLTV IDs and playlist `tvg-id`
+values match automatically. Outputs become available after the first successful
+update. Stream access is determined by the stream provider.
 
-## IPTV client configuration
+## Configuration
 
-### Playlist URL
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `CHANNELS` | `tvj` | Comma-separated built-in channel keys; unknown keys fail startup |
+| `UPDATE_INTERVAL` | `6` | Positive integer refresh interval in hours |
+| `TZ` | Container timezone | Logging timezone; XMLTV timestamps remain UTC |
+| `OUTPUT_FILE` | `/app/output/tvj.xml` | XMLTV output path |
+| `M3U_OUTPUT_FILE` | `tvj.m3u` beside XMLTV output | Playlist output path |
 
+The container serves `/app/output`; keep output paths there to expose the files
+through its HTTP server.
+
+| Channel key | Name | XMLTV / M3U ID |
+| --- | --- | --- |
+| `tvj` | Television Jamaica | `TVJ.jm@SD` |
+| `tvjsn` | TVJ Sports Network | `TVJSN.jm@SD` |
+
+TVJ Sports Network uses the supplied video URL:
+`https://vod2live.univtec.com/manifest/65cf631b-d422-49e0-ab25-07d5aa08ca8f/7660000.m3u8`.
+
+## Architecture
+
+- `epg/engine.py`: orchestrates configuration, shared fetching, and output.
+- `epg/config.py`: built-in channel definitions and environment selection.
+- `epg/models.py`: common channel and programme models.
+- `epg/providers/`: provider adapters registered in `PROVIDERS`.
+- `epg/writers.py`: XMLTV and M3U generation and atomic file replacement.
+- `tvj_epj.py`: compatibility entry point for running the engine directly.
+
+Add channels using an existing provider by adding a definition to `BUILTINS`.
+A new provider adapter implements `fetch(url, tenant)` and
+`programmes(data, channel_id)`, returning normalized `Programme` objects.
+Optional enriched metadata is represented as XMLTV elements, preserving categories,
+episode numbers, dates, durations, ratings, and artwork from the original script.
+Univtec channel IDs select objects within the response; they are not URL suffixes.
+
+All selected schedules must parse successfully before outputs are replaced.
+A failed fetch or invalid schedule leaves previous files intact, and the container
+retries at the next interval. Each file is replaced atomically; the two files are
+not a single transaction. Old data can expire during prolonged outages.
+
+Custom feed/channel environment settings, per-channel cached fallback, and health
+reporting are planned for subsequent milestones; they are not implemented yet.
+The root `tvj.m3u` is a legacy static example; container playlists are now generated.
+
+## Local verification
+
+With Python 3.11+ and `requests` installed:
+
+```sh
+python3 -m unittest discover -s tests -v
+CHANNELS=tvj,tvjsn OUTPUT_FILE=output/tvj.xml python3 -m epg.engine
 ```
-http://localhost:8787/tvj.m3u
-```
-
-### EPG URL
-
-```
-http://localhost:8787/tvj.xml
-```
-
-Most clients will automatically match the guide using the `tvg-id`.
-
----
-
-## Logging and updates
-
-Container logs show:
-
-* When the script last ran
-* When the XML file was written
-* How far into the future the EPG data extends
-
-Example:
-
-```
-[2026-02-01 10:46:11 EST] Script run started (TZ=America/Jamaica)
-[2026-02-01 10:46:11 EST] XMLTV written: /app/output/tvj.xml
-Summary: Last run=2026-02-01 10:46:11 EST, EPG updated until=2026-02-02 10:34:04 EST
-```
-
----
-
-## Updating the container
-
-The container image is built automatically via **GitHub Actions**.
-
-
