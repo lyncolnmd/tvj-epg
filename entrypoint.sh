@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
 
+PORT="${PORT-1876}"
+export PORT
+PORT="$(python -c 'import os; value = os.environ["PORT"]; valid = value.isascii() and value.isdigit() and 1 <= int(value) <= 65535; valid or exit("PORT must be an integer from 1 to 65535"); print(int(value))')"
+
 mkdir -p /app/output
 UPDATE_INTERVAL="${UPDATE_INTERVAL:-6}"
 export UPDATE_INTERVAL
@@ -18,4 +22,4 @@ python -c 'from epg.config import load; load()'
 ) &
 
 cd /app/output
-exec python3 -m http.server 8787
+exec python3 -m http.server "$PORT"

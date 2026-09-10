@@ -10,7 +10,7 @@ Build this checkout and select both channels:
 
 ```sh
 podman build -t tvj-epg .
-podman run -d --name tvj-epg -p 8787:8787 \
+podman run -d --name tvj-epg -p 1876:1876 \
   -e TZ=America/Jamaica \
   -e CHANNELS=tvj,tvjsn \
   -e UPDATE_INTERVAL=3 \
@@ -20,8 +20,12 @@ podman run -d --name tvj-epg -p 8787:8787 \
 With no `CHANNELS` setting, only TVJ is included, preserving the default behavior.
 Use `CHANNELS=tvjsn` for TVJ Sports Network alone.
 
-- Playlist: `http://localhost:8787/tvj.m3u`
-- Guide: `http://localhost:8787/tvj.xml`
+- Playlist: `http://localhost:1876/tvj.m3u`
+- Guide: `http://localhost:1876/tvj.xml`
+
+To use a different port, set `PORT` and match the container port in the mapping,
+for example `-e PORT=8787 -p 8787:8787`. Recreating an existing container requires
+updating its port mapping for the new default.
 
 Both files contain the selected channels. Their XMLTV IDs and playlist `tvg-id`
 values match automatically. Outputs become available after the first successful
@@ -31,6 +35,7 @@ update. Stream access is determined by the stream provider.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
+| `PORT` | `1876` | HTTP listening port (1–65535) |
 | `CHANNELS` | `tvj` | Comma-separated built-in channel keys; unknown keys fail startup |
 | `UPDATE_INTERVAL` | `6` | Positive integer refresh interval in hours |
 | `TZ` | Container timezone | Logging timezone; XMLTV timestamps remain UTC |
