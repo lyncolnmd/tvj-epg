@@ -29,7 +29,7 @@ def m3u(channels):
     lines = ["#EXTM3U"]
     for channel in channels:
         lines.extend([
-            f'#EXTINF:-1 tvg-id="{channel.id}" tvg-logo="{channel.icon}" group-title="{channel.group}",{channel.name}',
+            f'#EXTINF:-1 tvg-id="{channel.id}" tvg-name="{channel.name}" tvg-logo="{channel.icon}" group-title="{channel.group}",{channel.name}',
             channel.stream_url,
         ])
     return ("\n".join(lines) + "\n").encode("utf-8")

@@ -8,7 +8,7 @@ BUILTINS = {
         id="TVJ.jm@SD", name="Television Jamaica",
         channel_id="66e312890478fd00235244cb",
         stream_url="https://vod2live.univtec.com/manifest/a99a1804-dc83-411f-8c1c-b62f08cdfa59.m3u8",
-        icon="https://www.televisionjamaica.com/Portals/0/tvj_logo.png",
+        icon="https://rjr.vod.immergo.tv/rjr/uploaded/abeb1489-7346-4e0f-b9c4-b351e2a47fb0.png",
     ),
     "tvjsn": Channel(
         id="TVJSN.jm@SD", name="TVJ Sports Network",
