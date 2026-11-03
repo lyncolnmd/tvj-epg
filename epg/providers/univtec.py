@@ -228,8 +228,15 @@ def add_icon(programme_el, item: dict):
 
 
 def fetch(url, tenant):
+    # Match the working public EPG request. Do not send a captured ETag via
+    # If-None-Match: a 304 response has no JSON body to parse.
     response = requests.get(url, headers={
-        "accept": "application/json", "platform": "web", "x-tenant-id": tenant,
+        "accept": "application/json, text/javascript, */*; q=0.01",
+        "accept-language": "en-US,en;q=0.9,es;q=0.8",
+        "origin": "https://www.1spotmedia.com",
+        "platform": "web",
+        "referer": "https://www.1spotmedia.com/",
+        "x-tenant-id": tenant,
     }, timeout=30)
     response.raise_for_status()
     data = response.json()
